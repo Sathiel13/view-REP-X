@@ -1,32 +1,35 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { getAllOrders, updateOrderStatus } from "../../api/orderAPI";
+import type { Order as ApiOrder } from "../../types/order";
 
-// Interfaz local que simplifica el estado de orden para UI
-interface Order {
+// Interfaz local simplificada para UI con el campo 'status' que resume payment y delivery
+interface UIOrder {
     _id: string;
     user: string;
     total: number;
-    // Representamos estado combinado para UI, lo actualizamos a partir de payment y delivery status
     status: "pagada" | "pendientePago" | "entregada" | "pendienteEntrega";
     createdAt: string;
 }
 
 const OrderManagement = () => {
-    const [orders, setOrders] = useState<Order[]>([]);
+    const [orders, setOrders] = useState<UIOrder[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchOrders = async () => {
             try {
-                const data = await getAllOrders();
-                // Transformamos la data del backend a nuestro estado local simplificado
-                const transformedOrders = data.map((order) => {
-                    let status: Order["status"];
+                const data: ApiOrder[] = await getAllOrders();
+
+                // Transformamos ApiOrder[] a UIOrder[]
+                const transformedOrders: UIOrder[] = data.map((order) => {
+                    let status: UIOrder["status"];
+
                     if (order.paymentStatus === "paid") status = "pagada";
                     else if (order.paymentStatus === "pending") status = "pendientePago";
                     else if (order.deliveryStatus === "delivered") status = "entregada";
                     else status = "pendienteEntrega";
+
                     return {
                         _id: order._id,
                         user: order.user,
@@ -35,6 +38,7 @@ const OrderManagement = () => {
                         createdAt: order.createdAt,
                     };
                 });
+
                 setOrders(transformedOrders);
             } catch (error) {
                 console.error("Error al cargar las órdenes:", error);
@@ -43,16 +47,15 @@ const OrderManagement = () => {
                 setLoading(false);
             }
         };
+
         fetchOrders();
     }, []);
 
-    // Actualizamos estado de orden en backend y en UI
     const handleUpdateOrderStatus = async (
         id: string,
-        newStatus: Order["status"]
+        newStatus: UIOrder["status"]
     ) => {
         try {
-            // Construimos el payload para backend según el nuevo estado
             let paymentStatus = "";
             let deliveryStatus = "";
 
@@ -75,18 +78,19 @@ const OrderManagement = () => {
                     break;
             }
 
-            // Enviamos al backend solo los campos no vacíos para no sobrescribir valores innecesarios
             const statusPayload: { paymentStatus?: string; deliveryStatus?: string } = {};
             if (paymentStatus) statusPayload.paymentStatus = paymentStatus;
             if (deliveryStatus) statusPayload.deliveryStatus = deliveryStatus;
 
             await updateOrderStatus(id, statusPayload);
 
+            // Actualizamos la UI local con el nuevo estado simplificado
             setOrders((prev) =>
                 prev.map((order) =>
                     order._id === id ? { ...order, status: newStatus } : order
                 )
             );
+
             toast.success("Estado de la orden actualizado.");
         } catch (error) {
             console.error("Error al actualizar el estado:", error);
