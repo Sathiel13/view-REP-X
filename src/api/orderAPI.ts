@@ -1,6 +1,34 @@
 import axios from "axios";
 import type { Order } from '../types/order'; // Usando la definición única
 
+// Definición de las métricas del dashboard
+export interface DashboardMetrics {
+    totalRevenue: number;
+    totalItemsSold: number;
+    totalUsers: number;
+    completedOrders: number;
+    ordersByStatus: {
+        pagadas: number;
+        pendientesPago: number;
+        entregadas: number;
+        pendientesEntrega: number;
+    };
+    dailySales: { _id: string; total: number }[];
+}
+
+// Obtener métricas del dashboard
+export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
+    try {
+        const response = await axios.get<DashboardMetrics>("/api/admin/dashboard-metrics", {
+            withCredentials: true,
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error obteniendo métricas del dashboard", error);
+        throw error;
+    }
+};
+
 // Obtener todas las órdenes
 export const getAllOrders = async (): Promise<Order[]> => {
     try {
