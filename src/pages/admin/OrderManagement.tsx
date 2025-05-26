@@ -2,50 +2,89 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { getAllOrders, updateOrderStatus } from "../../api/orderAPI";
 
-// Interfaz para representar una orden
+// Interfaz local que simplifica el estado de orden para UI
 interface Order {
     _id: string;
     user: string;
     total: number;
+    // Representamos estado combinado para UI, lo actualizamos a partir de payment y delivery status
     status: "pagada" | "pendientePago" | "entregada" | "pendienteEntrega";
     createdAt: string;
 }
 
 const OrderManagement = () => {
     const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState<boolean>(true); // Añadido estado para control de carga
+    const [loading, setLoading] = useState(true);
 
-    // useEffect para cargar órdenes al montar el componente
     useEffect(() => {
         const fetchOrders = async () => {
             try {
                 const data = await getAllOrders();
-                if (Array.isArray(data)) {
-                    setOrders(data);
-                } else {
-                    throw new Error("La respuesta no es un array");
-                }
+                // Transformamos la data del backend a nuestro estado local simplificado
+                const transformedOrders = data.map((order) => {
+                    let status: Order["status"];
+                    if (order.paymentStatus === "paid") status = "pagada";
+                    else if (order.paymentStatus === "pending") status = "pendientePago";
+                    else if (order.deliveryStatus === "delivered") status = "entregada";
+                    else status = "pendienteEntrega";
+                    return {
+                        _id: order._id,
+                        user: order.user,
+                        total: order.total,
+                        status,
+                        createdAt: order.createdAt,
+                    };
+                });
+                setOrders(transformedOrders);
             } catch (error) {
                 console.error("Error al cargar las órdenes:", error);
                 toast.error("Error al cargar las órdenes.");
             } finally {
-                setLoading(false); // Finalizar el estado de carga
+                setLoading(false);
             }
         };
-
         fetchOrders();
     }, []);
 
-    // Función para actualizar el estado de una orden
+    // Actualizamos estado de orden en backend y en UI
     const handleUpdateOrderStatus = async (
         id: string,
-        status: "pagada" | "pendientePago" | "entregada" | "pendienteEntrega"
+        newStatus: Order["status"]
     ) => {
         try {
-            await updateOrderStatus(id, status); // Llamada a la API para actualizar el estado
-            setOrders((prevOrders) =>
-                prevOrders.map((order) =>
-                    order._id === id ? { ...order, status } : order
+            // Construimos el payload para backend según el nuevo estado
+            let paymentStatus = "";
+            let deliveryStatus = "";
+
+            switch (newStatus) {
+                case "pagada":
+                    paymentStatus = "paid";
+                    deliveryStatus = "";
+                    break;
+                case "pendientePago":
+                    paymentStatus = "pending";
+                    deliveryStatus = "";
+                    break;
+                case "entregada":
+                    deliveryStatus = "delivered";
+                    paymentStatus = "";
+                    break;
+                case "pendienteEntrega":
+                    deliveryStatus = "processing";
+                    paymentStatus = "";
+                    break;
+            }
+
+            // Enviamos al backend solo los campos no vacíos para no sobrescribir valores innecesarios
+            const statusPayload: { paymentStatus?: string; deliveryStatus?: string } = {};
+            if (paymentStatus) statusPayload.paymentStatus = paymentStatus;
+            if (deliveryStatus) statusPayload.deliveryStatus = deliveryStatus;
+
+            await updateOrderStatus(id, statusPayload);
+
+            setOrders((prev) =>
+                prev.map((order) =>
+                    order._id === id ? { ...order, status: newStatus } : order
                 )
             );
             toast.success("Estado de la orden actualizado.");
@@ -55,13 +94,12 @@ const OrderManagement = () => {
         }
     };
 
-    // Renderizado con manejo de carga y validaciones
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-semibold">Gestión de Órdenes</h2>
-            {loading ? ( // Mostrar un indicador de carga
+            {loading ? (
                 <div>Cargando órdenes...</div>
-            ) : orders.length === 0 ? ( // Mostrar un mensaje si no hay órdenes
+            ) : orders.length === 0 ? (
                 <div className="text-gray-500">No hay órdenes disponibles.</div>
             ) : (
                 <div className="overflow-hidden bg-white shadow sm:rounded-lg">
@@ -83,15 +121,9 @@ const OrderManagement = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                         {orders.map((order) => (
                             <tr key={order._id}>
-                                <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                    {order.user}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                    ${order.total.toFixed(2)}
-                                </td>
-                                <td className="px-6 py-4 text-sm text-gray-500">
-                                    {order.status}
-                                </td>
+                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.user}</td>
+                                <td className="px-6 py-4 text-sm text-gray-500">${order.total.toFixed(2)}</td>
+                                <td className="px-6 py-4 text-sm text-gray-500">{order.status}</td>
                                 <td className="px-6 py-4 text-sm font-medium">
                                     <button
                                         onClick={() => handleUpdateOrderStatus(order._id, "entregada")}

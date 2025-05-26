@@ -1,4 +1,6 @@
 import axios from "axios";
+// Importa Order como ApiOrder para evitar conflicto con la interfaz local
+import type { Order as ApiOrder } from '../types/order';
 
 // Define la interfaz de una métrica del dashboard
 export interface DashboardMetrics {
@@ -28,7 +30,9 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
     }
 };
 
-// Interfaz de una orden para la API
+// (Opcional) Si la interfaz local es igual o muy similar, podrías eliminar esta definición local y usar ApiOrder directamente.
+// Si decides mantenerla, asegúrate que no haya conflicto de nombres.
+
 export interface Order {
     _id: string;
     user: string;
@@ -40,10 +44,10 @@ export interface Order {
     updatedAt: string;
 }
 
-// Obtener todas las órdenes
-export const getAllOrders = async (): Promise<Order[]> => {
+// Obtener todas las órdenes usando la interfaz importada con alias ApiOrder
+export const getAllOrders = async (): Promise<ApiOrder[]> => {
     try {
-        const response = await axios.get<Order[]>("/api/orders", { withCredentials: true });
+        const response = await axios.get<ApiOrder[]>("/api/orders", { withCredentials: true });
         return response.data;
     } catch (error) {
         console.error("Error al obtener órdenes", error);
@@ -54,10 +58,10 @@ export const getAllOrders = async (): Promise<Order[]> => {
 // Actualizar el estado de una orden
 export const updateOrderStatus = async (
     orderId: string,
-    status: { paymentStatus: string; deliveryStatus: string }
-): Promise<Order> => {
+    status: { paymentStatus?: string; deliveryStatus?: string }
+): Promise<ApiOrder> => {
     try {
-        const response = await axios.patch<Order>(`/api/orders/${orderId}/status`, status, {
+        const response = await axios.patch<ApiOrder>(`/api/orders/${orderId}/status`, status, {
             withCredentials: true,
         });
         return response.data;
