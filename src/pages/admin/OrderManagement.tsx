@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { getAllOrders, updateOrderStatus } from "../../api/orderAPI";
 import type { Order as ApiOrder } from "../../types/order";
 
-// Interfaz local simplificada para UI con el campo 'status' que resume payment y delivery
+// Interfaz local para UI
 interface UIOrder {
     _id: string;
     user: string;
@@ -21,7 +21,7 @@ const OrderManagement = () => {
             try {
                 const data: ApiOrder[] = await getAllOrders();
 
-                // Transformamos ApiOrder[] a UIOrder[]
+                // Transformar ApiOrder[] a UIOrder[]
                 const transformedOrders: UIOrder[] = data.map((order) => {
                     let status: UIOrder["status"];
 
@@ -51,10 +51,7 @@ const OrderManagement = () => {
         fetchOrders();
     }, []);
 
-    const handleUpdateOrderStatus = async (
-        id: string,
-        newStatus: UIOrder["status"]
-    ) => {
+    const handleUpdateOrderStatus = async (id: string, newStatus: UIOrder["status"]) => {
         try {
             let paymentStatus = "";
             let deliveryStatus = "";
@@ -62,19 +59,15 @@ const OrderManagement = () => {
             switch (newStatus) {
                 case "pagada":
                     paymentStatus = "paid";
-                    deliveryStatus = "";
                     break;
                 case "pendientePago":
                     paymentStatus = "pending";
-                    deliveryStatus = "";
                     break;
                 case "entregada":
                     deliveryStatus = "delivered";
-                    paymentStatus = "";
                     break;
                 case "pendienteEntrega":
                     deliveryStatus = "processing";
-                    paymentStatus = "";
                     break;
             }
 
@@ -84,7 +77,7 @@ const OrderManagement = () => {
 
             await updateOrderStatus(id, statusPayload);
 
-            // Actualizamos la UI local con el nuevo estado simplificado
+            // Actualizar el estado local
             setOrders((prev) =>
                 prev.map((order) =>
                     order._id === id ? { ...order, status: newStatus } : order
@@ -132,12 +125,14 @@ const OrderManagement = () => {
                                     <button
                                         onClick={() => handleUpdateOrderStatus(order._id, "entregada")}
                                         className="text-sm text-green-600 hover:text-green-800"
+                                        type="button"
                                     >
                                         Completar
                                     </button>
                                     <button
                                         onClick={() => handleUpdateOrderStatus(order._id, "pendienteEntrega")}
                                         className="text-sm text-red-600 hover:text-red-800 ml-4"
+                                        type="button"
                                     >
                                         Cancelar
                                     </button>
